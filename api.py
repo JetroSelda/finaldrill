@@ -25,10 +25,11 @@ def data_fetch(query):
     return data
 
 
+
 @app.route("/customers", methods=["GET"])
 def get_customers():
     data = data_fetch("""SELECT * FROM customers""")
-    return make_response(jsonify(data), 200)
+    return make_response(jsonify({"customers": data}), 200)
 
 
 @app.route("/customers/<int:id>", methods=["GET"])
@@ -41,7 +42,8 @@ def get_customers_by_id(id):
 def get_orders_by_customer(id):
     data = data_fetch(
         """
-        SELECT products.product_name, orders.order_date 
+        SELECT concat(customers.first_name," ",customers.last_name) as Name, 
+        products.product_name, orders.order_date
         FROM customers 
         INNER JOIN orders
         ON customers.id = orders.customer_id 
@@ -51,6 +53,7 @@ def get_orders_by_customer(id):
         ON order_details.product_id = products.id
         WHERE customers.id = {}
     """.format(id))
+    
     return make_response(
         jsonify({"customer_id": id, "count": len(data), "orders": data}), 200
     )
