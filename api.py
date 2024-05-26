@@ -4,8 +4,8 @@ from flask_mysqldb import MySQL
 app = Flask(__name__)
 app.config["MYSQL_HOST"] = "localhost"
 app.config["MYSQL_USER"] = "root"
-app.config["MYSQL_PASSWORD"] = ""
-app.config["MYSQL_DB"] = "sakila"
+app.config["MYSQL_PASSWORD"] = "root"
+app.config["MYSQL_DB"] = "northwind"
 
 app.config["MYSQL_CURSORCLASS"] = "DictCursor"
 
@@ -25,46 +25,45 @@ def data_fetch(query):
     return data
 
 
-@app.route("/actors", methods=["GET"])
-def get_actors():
-    data = data_fetch("""select * from actor""")
+@app.route("/customers", methods=["GET"])
+def get_customers():
+    data = data_fetch("""SELECT * FROM customers""")
     return make_response(jsonify(data), 200)
 
 
-@app.route("/actors/<int:id>", methods=["GET"])
-def get_actor_by_id(id):
-    data = data_fetch("""SELECT * FROM actor where actor_id = {}""".format(id))
+@app.route("/customers/<int:id>", methods=["GET"])
+def get_customers_by_id(id):
+    data = data_fetch("""SELECT * FROM customers WHERE id = {}""".format(id))
     return make_response(jsonify(data), 200)
 
 
-@app.route("/actors/<int:id>/movies", methods=["GET"])
-def get_movies_by_actor(id):
+@app.route("/customers/<int:id>/orders", methods=["GET"])
+def get_orders_by_customer(id):
     data = data_fetch(
         """
-        SELECT film.title, film.release_year 
-        FROM actor 
-        INNER JOIN film_actor
-        ON actor.actor_id = film_actor.actor_id 
-        INNER JOIN film
-        ON film_actor.film_id = film.film_id 
-        WHERE actor.actor_id = {}
-    """.format(
-            id
-        )
-    )
+        SELECT products.product_name, orders.order_date 
+        FROM customers 
+        INNER JOIN orders
+        ON customers.id = orders.customer_id 
+        INNER JOIN order_details
+        ON orders.id = order_details.order_id
+        INNER JOIN products 
+        ON order_details.product_id = products.id
+        WHERE customers.id = {}
+    """.format(id))
     return make_response(
-        jsonify({"actor_id": id, "count": len(data), "movies": data}), 200
+        jsonify({"customer_id": id, "count": len(data), "orders": data}), 200
     )
 
 
-@app.route("/actors", methods=["POST"])
-def add_actor():
+@app.route("/customers", methods=["POST"])
+def add_customer():
     cur = mysql.connection.cursor()
     info = request.get_json()
     first_name = info["first_name"]
     last_name = info["last_name"]
     cur.execute(
-        """ INSERT INTO actor (first_name, last_name) VALUE (%s, %s)""",
+        """ INSERT INTO customers (first_name, last_name) VALUE (%s, %s)""",
         (first_name, last_name),
     )
     mysql.connection.commit()
@@ -73,20 +72,20 @@ def add_actor():
     cur.close()
     return make_response(
         jsonify(
-            {"message": "actor added successfully", "rows_affected": rows_affected}
+            {"message": "customer added successfully", "rows_affected": rows_affected}
         ),
         201,
     )
 
 
-@app.route("/actors/<int:id>", methods=["PUT"])
-def update_actor(id):
+@app.route("/customers/<int:id>", methods=["PUT"])
+def update_customer(id):
     cur = mysql.connection.cursor()
     info = request.get_json()
     first_name = info["first_name"]
     last_name = info["last_name"]
     cur.execute(
-        """ UPDATE actor SET first_name = %s, last_name = %s WHERE actor_id = %s """,
+        """ UPDATE customers SET first_name = %s, last_name = %s WHERE id = %s """,
         (first_name, last_name, id),
     )
     mysql.connection.commit()
@@ -94,31 +93,33 @@ def update_actor(id):
     cur.close()
     return make_response(
         jsonify(
-            {"message": "actor updated successfully", "rows_affected": rows_affected}
+            {"message": "customer updated successfully", "rows_affected": rows_affected}
         ),
         200,
     )
 
 
-@app.route("/actors/<int:id>", methods=["DELETE"])
-def delete_actor(id):
+@app.route("/customers/<int:id>", methods=["DELETE"])
+def delete_customer(id):
     cur = mysql.connection.cursor()
-    cur.execute(""" DELETE FROM actor where actor_id = %s """, (id,))
+    cur.execute(""" DELETE FROM customers where id = %s """, (id,))
     mysql.connection.commit()
     rows_affected = cur.rowcount
     cur.close()
     return make_response(
         jsonify(
-            {"message": "actor deleted successfully", "rows_affected": rows_affected}
+            {"message": "customer deleted successfully", "rows_affected": rows_affected}
         ),
         200,
     )
 
-@app.route("/actors/format", methods=["GET"])
+
+@app.route("/customers/format", methods=["GET"])
 def get_params():
-    fmt = request.args.get('id')
-    foo = request.args.get('aaaa')
-    return make_response(jsonify({"format":fmt, "foo":foo}),200)
+    fmt = request.args.get("id")
+    foo = request.args.get("aaaa")
+    return make_response(jsonify({"format": fmt, "foo": foo}), 200)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
